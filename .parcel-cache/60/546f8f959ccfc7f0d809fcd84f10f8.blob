@@ -1,0 +1,11 @@
+<html>
+    <head>
+        <title>WcPlayer Demo</title>
+        <script src="/index.HASH_REF_ff98eba9a370e7238e5d5461150f7a75.js"></script>
+    </head>
+    <body>
+        <wcplayer>
+            <video src="http://clips.vorwaerts-gmbh.de/VfE_html5.mp4" controls=""></video>
+        </wcplayer>
+    </body>
+</html>

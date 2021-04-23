@@ -1,0 +1,124 @@
+var _parcelHelpers = require("@parcel/transformer-js/lib/esmodule-helpers.js");
+_parcelHelpers.defineInteropFlag(exports);
+_parcelHelpers.export(exports, "HTML5AudioPlayer", function () {
+  return HTML5AudioPlayer;
+});
+_parcelHelpers.export(exports, "HTML5VideoPlayer", function () {
+  return HTML5VideoPlayer;
+});
+var _PlayerInterface = require('./PlayerInterface');
+var HTML5PlayerType;
+(function (HTML5PlayerType) {
+  HTML5PlayerType[HTML5PlayerType["AUDIO"] = 0] = "AUDIO";
+  HTML5PlayerType[HTML5PlayerType["VIDEO"] = 1] = "VIDEO";
+})(HTML5PlayerType || (HTML5PlayerType = {}));
+class HTML5Player extends _PlayerInterface.AbstractPlayer {
+  static platform = 'html5';
+  constructor(parent) {
+    super(parent);
+    this.attachShadow({
+      mode: 'open'
+    });
+    const htmlElement = this.parent.slotChildElement;
+    this.source = htmlElement.currentSrc || htmlElement.src || '';
+    this.reloadPlayer();
+  }
+  attributeChangedCallback(name) {
+    if (name === 'quality') {
+      this.getAvailableQualities().then(qualities => {
+        if (qualities.length > 0 && qualities[this.quality] !== undefined) {
+          this.source = this.sources[this.quality].getAttribute('src');
+        }
+      });
+    }
+    if (name === 'source') {
+      const currentTime = this.player.currentTime;
+      const isPaused = this.player.paused;
+      this.player.setAttribute('src', this.source);
+      this.player.currentTime = currentTime;
+      if (!isPaused) {
+        this.player.play();
+      }
+    }
+  }
+  reloadPlayer() {
+    if (this.player !== undefined) this.shadowRoot.removeChild(this.player);
+    this.player = document.createElement(this.constructor.playerTyoe === HTML5PlayerType.AUDIO ? 'audio' : 'video');
+    this.player.setAttribute('src', this.source);
+    this.player.currentTime = 0;
+    this.player.autoplay = this.autoplay;
+    this.setListeners();
+    this.shadowRoot.appendChild(this.player);
+  }
+  setListeners() {
+    this.player.addEventListener('playing', () => {
+      this.emit('playing', {
+        player: this
+      });
+    });
+    this.player.addEventListener('pause', () => {
+      this.emit('pause', {
+        player: this
+      });
+    });
+    this.player.addEventListener('waiting', () => {
+      this.emit('waiting', {
+        player: this
+      });
+    });
+    this.player.addEventListener('durationchange', () => {
+      this.emit('durationchange', {
+        player: this
+      });
+    });
+    this.player.addEventListener('timeupdate', () => {
+      this.emit('timeupdate', {
+        player: this
+      });
+    });
+    this.player.addEventListener('ended', () => {
+      this.emit('ended', {
+        player: this
+      });
+    });
+  }
+  async play() {
+    this.player.play();
+  }
+  async pause() {
+    this.player.pause();
+  }
+  async seek(t) {
+    this.player.currentTime = t;
+  }
+  async stop() {
+    this.player.pause();
+    this.player.currentTime = 0;
+  }
+  async getAvailableQualities() {
+    return this.sources.map(source => parseInt(source.getAttribute('size')));
+  }
+  get sources() {
+    return Array.from(this.parent.slotChildElement.querySelectorAll('source')).filter(source => {
+      if (source.hasAttribute('type')) {
+        const [type, mime] = source.getAttribute('type').split('/');
+        if (type === this.getAttribute('type')) {
+          if (this.player.canPlayType(type + '/' + mime) === '') {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+  }
+}
+class HTML5AudioPlayer extends HTML5Player {
+  static platform = 'html5-audio';
+  static playerTyoe = HTML5PlayerType.AUDIO;
+}
+class HTML5VideoPlayer extends HTML5Player {
+  static platform = 'html5-video';
+  static playerTyoe = HTML5PlayerType.AUDIO;
+}
+customElements.define('html5-audio-player', HTML5AudioPlayer);
+customElements.define('html5-video-player', HTML5VideoPlayer);

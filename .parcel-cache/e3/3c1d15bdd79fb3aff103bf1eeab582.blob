@@ -1,0 +1,11 @@
+<html>
+    <head>
+        <title>WcPlayer Demo</title>
+        <script src="3f283e6d69dcb4d245b0d6069738d6b1"></script>
+    </head>
+    <body>
+        <wcplayer>
+            <video src="bc72187713d4ec8f940a5f491d35a78f"></video>
+        </wcplayer>
+    </body>
+</html>
