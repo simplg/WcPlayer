@@ -1,15 +1,18 @@
-import PlayButton from './controls/PlayButton';
-import { VolumeElement } from './controls/VolumeElement';
-import TimerElement from './controls/TimerElement';
-import { SeekElement } from './controls/SeekElement';
-import SettingsButton from './controls/SettingsButton';
-import FullscreenButton from './controls/FullscreenButton';
-import PiPButton from './controls/PiPButton';
-import { ControlsEventMap } from './events';
+import { ControlsEventMap, SeekChangeEvent, VolumeEvent } from './events';
+import './controls/PlayButton';
+import './controls/VolumeElement';
+import './controls/TimerElement';
+import './controls/SeekElement';
+import './controls/SettingsButton';
+import './controls/FullscreenButton';
+import './controls/PiPButton';
+import './controls/VolumeButton';
+import './controls/Panel';
 
 export interface ControlElements {
   playPauseButton: HTMLElement;
-  volumeButton: HTMLElement;
+  volumeButton: HTMLButtonElement;
+  volumeElement: HTMLElement;
   timerElement: HTMLElement;
   seekElement: HTMLElement;
   settingsButton: HTMLElement;
@@ -19,63 +22,147 @@ export interface ControlElements {
 
 export interface PanelElements {
   settingsPanel: HTMLElement;
-  volumePanel: HTMLElement;
 }
 
 export interface WcControlsProps {
-  controls: ControlElements;
+  elements: ControlElements;
   panels: PanelElements;
 }
 
 export class WcControls extends HTMLElement {
-  controls: ControlElements;
+  elements: ControlElements;
   panels: PanelElements;
-  constructor(props?: Partial<WcControlsProps>) {
+  constructor() {
     super();
-    this.controls = {
-      playPauseButton: props?.controls.playPauseButton || new PlayButton(),
-      volumeButton: props?.controls.volumeButton || new VolumeElement(),
-      timerElement: props?.controls.timerElement || new TimerElement(),
-      seekElement: props?.controls.seekElement || new SeekElement(),
-      settingsButton: props?.controls.settingsButton || new SettingsButton(),
-      fullscreenButton: props?.controls.fullscreenButton || new FullscreenButton(),
-      pipButton: props?.controls.pipButton || new PiPButton(),
-    };
-    this.panels = {
-      settingsPanel: props?.panels.settingsPanel || null,
-      volumePanel: props?.panels.volumePanel || new VolumeElement(),
-    };
-    this.attachEvents();
     this.attachShadow({ mode: 'open' });
+  }
+
+  connectedCallback() {
+    this.reload();
+  }
+
+  get color(): string {
+    if (this.hasAttribute('color')) return this.getAttribute('color');
+    return 'white';
+  }
+
+  set color(color: string) {
+    this.setAttribute('color', color);
+  }
+
+  static get observedAttributes(): string[] {
+    return ['color'];
+  }
+
+  attributeChangedCallback(name: string) {
+    if (name === 'color') {
+      this.reload();
+    }
   }
 
   reload(): void {
     this.shadowRoot.innerHTML = this.build();
-    const wrapper = this.shadowRoot.querySelector('.controls');
-    Object.keys(this.controls).forEach((key: keyof ControlElements) => {
-      if (this.controls[key] !== null) wrapper.appendChild(this.controls[key]);
-    });
-    Object.keys(this.panels).forEach((key: keyof PanelElements) => {
-      if (this.panels[key] !== null) this.shadowRoot.appendChild(this.panels[key]);
-    });
+    this.elements = {
+      playPauseButton: this.shadowRoot.querySelector('play-button'),
+      volumeButton: this.shadowRoot.querySelector('volume-button'),
+      volumeElement: this.shadowRoot.querySelector('volume-element'),
+      timerElement: this.shadowRoot.querySelector('timer-element'),
+      seekElement: this.shadowRoot.querySelector('seek-element'),
+      settingsButton: this.shadowRoot.querySelector('settings-button'),
+      fullscreenButton: this.shadowRoot.querySelector('fullscreen-button'),
+      pipButton: this.shadowRoot.querySelector('pip-button'),
+    };
+    this.panels = {
+      settingsPanel: this.shadowRoot.querySelector('settings-panel'),
+    };
+    this.attachEvents();
   }
   attachEvents(): void {
-    this.controls.playPauseButton.addEventListener('click', (e) => {
-      this.emit('toggle_play', {});
+    this.elements.playPauseButton.addEventListener('click', (e) => {
+      this.emit('wctoggleplay', {});
+    });
+    this.elements.volumeButton.addEventListener('click', (e) => {
+      this.emit('wcmuted', {
+        muted: !this.elements.volumeButton.hasAttribute('mute'),
+      });
+    });
+    const volumeControl = this.shadowRoot.querySelector('.volume-control') as HTMLDivElement;
+    volumeControl.addEventListener('mouseover', () => {
+      this.elements.volumeElement.classList.remove('hide');
+    });
+    volumeControl.addEventListener('mouseout', () => {
+      this.elements.volumeElement.classList.add('hide');
+    });
+    this.elements.seekElement.addEventListener('seekchange', (e: CustomEvent<SeekChangeEvent>) => {
+      const { time } = e.detail;
+      this.emit('wcseekchange', { time });
+    });
+    this.elements.volumeElement.addEventListener('volumechange', (e: CustomEvent<VolumeEvent>) => {
+      const { volume } = e.detail;
+      this.emit('wcvolumechange', { volume });
+    });
+    this.elements.fullscreenButton.addEventListener('click', () => {
+      this.emit('wcfullscreen', {});
     });
   }
 
   build(): string {
     return `<style>
         .controls {
+          position: relative;
+          z-index: 2;
+          height: 45px;
+          width: 100%;
+          top: -45px;
+          background: black;
+          color: ${this.color};
+        }
+        .control-list {
           display: flex;
           flex-direction: row;
-          width: 100%;
-          height: 40px;
           overflow: hidden;
+          height: 38px;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .control-left, .control-right, .volume-control {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          height: 100%;
+        }
+        volume-element {
+          width: 80px;
+          transition: width .3s, visibility .3s;
+        }
+        .hide {
+          visibility: hidden;
+          width: 0;
+        }
+        .volume-control {
+          margin-right: 5px;
         }
       </style>
-      <div class="controls"></div>`;
+      <div class="controls">
+        <seek-element class="seek-element"></seek-element>
+        <div class="control-list">
+          <div class="control-right">
+            <play-button class="play-button" color="${this.color}"></play-button>
+            <div class="volume-control">
+              <volume-button class="volume-button" color="${this.color}"></volume-button>
+              <volume-element class="volume-element" class="hide"></volume-element>
+            </div>
+            <timer-element class="timer-element"></timer-element>
+          </div>
+          <div class="control-left">
+            <settings-button class="settings-button" color="${this.color}"></settings-button>
+            <fullscreen-button class="fullscreen-button" color="${this.color}"></fullscreen-button>
+            <pip-button class="pip-button" color="${this.color}"></pip-button>
+          </div>
+        </div>
+      </div>
+      <wc-panel class="hide"></wc-panel>
+      `;
   }
   addEventListener<K extends keyof ControlsEventMap>(
     type: K,

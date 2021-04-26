@@ -38,6 +38,14 @@ class HTML5Player extends AbstractPlayer {
   }
 
   reloadPlayer(): void {
+    this.shadowRoot.innerHTML = `
+    <style>
+      audio, video {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+    `;
     if (this.player !== undefined) this.shadowRoot.removeChild(this.player);
     this.player = document.createElement(
       (this.constructor as typeof HTML5Player).playerTyoe === HTML5PlayerType.AUDIO ? 'audio' : 'video',
@@ -70,6 +78,12 @@ class HTML5Player extends AbstractPlayer {
     this.player.addEventListener('ended', () => {
       this.emit('ended', { player: this });
     });
+    this.player.addEventListener('canplay', () => {
+      this.emit('ready', { player: this });
+    });
+    this.player.addEventListener('volumechange', () => {
+      this.emit('volumechange', { player: this });
+    });
   }
   async play(): Promise<void> {
     this.player.play();
@@ -90,6 +104,10 @@ class HTML5Player extends AbstractPlayer {
 
   get currentTime(): number {
     return this.player.currentTime;
+  }
+
+  set currentTime(time: number) {
+    this.seek(time);
   }
 
   get duration(): number {

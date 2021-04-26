@@ -1,29 +1,30 @@
-export default class VolumeButton extends HTMLButtonElement {
+import IconButton from './IconButton';
+
+export default class VolumeButton extends IconButton {
   constructor() {
     super();
-    this.innerHTML = this.build();
+    this.icon = this.mute ? 'volume-x' : 'volume-2';
   }
 
   attributeChangedCallback(name: string): void {
+    super.attributeChangedCallback(name);
     if (name === 'mute') {
-      this.innerHTML = this.build();
+      this.icon = this.mute ? 'volume-x' : 'volume-2';
     }
-  }
-
-  build(): string {
-    if (this.isMute) {
-      return `Ec`;
-    }
-    return `Fs`;
   }
 
   static get observedAttributes(): string[] {
-    return ['mute'];
+    return ['color', 'mute'];
   }
 
-  get isMute(): boolean {
+  get mute(): boolean {
     return this.hasAttribute('mute');
+  }
+
+  set mute(muted: boolean) {
+    if (muted) this.removeAttribute('mute');
+    else this.setAttribute('mute', '');
   }
 }
 
-customElements.define('volume-button', VolumeButton, { extends: 'button' });
+customElements.define('volume-button', VolumeButton);

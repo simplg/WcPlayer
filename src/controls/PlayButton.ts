@@ -1,29 +1,30 @@
-export default class PlayButton extends HTMLButtonElement {
+import IconButton from './IconButton';
+
+export default class PlayButton extends IconButton {
   constructor() {
     super();
-    this.innerHTML = this.build();
+    this.icon = this.paused ? 'play' : 'pause';
   }
 
   attributeChangedCallback(name: string): void {
+    super.attributeChangedCallback(name);
     if (name === 'paused') {
-      this.innerHTML = this.build();
+      this.icon = this.paused ? 'play' : 'pause';
     }
-  }
-
-  build(): string {
-    if (this.paused) {
-      return `Pa`;
-    }
-    return `Pl`;
   }
 
   static get observedAttributes(): string[] {
-    return ['paused'];
+    return ['color', 'paused'];
   }
 
   get paused(): boolean {
     return this.hasAttribute('paused');
   }
+
+  set paused(paused: boolean) {
+    if (paused) this.removeAttribute('paused');
+    else this.setAttribute('paused', '');
+  }
 }
 
-customElements.define('play-button', PlayButton, { extends: 'button' });
+customElements.define('play-button', PlayButton);

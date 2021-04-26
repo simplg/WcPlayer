@@ -1,12 +1,11 @@
-export default class SettingsButton extends HTMLButtonElement {
+import './Icon';
+import IconButton from './IconButton';
+
+export default class SettingsButton extends IconButton {
   constructor() {
     super();
-    this.innerHTML = this.build();
-  }
-
-  build(): string {
-    return `St`;
+    this.icon = 'settings';
   }
 }
 
-customElements.define('settings-button', SettingsButton, { extends: 'button' });
+customElements.define('settings-button', SettingsButton);
