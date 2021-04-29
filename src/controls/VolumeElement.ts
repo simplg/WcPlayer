@@ -24,7 +24,9 @@ export class VolumeElement extends HTMLElement {
     };
     this._options = Object.assign(defaultStyle, opt);
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = this.build();
+  }
+  connectedCallback(): void {
+    this.reload();
   }
 
   static get observedAttributes(): string[] {
@@ -33,25 +35,39 @@ export class VolumeElement extends HTMLElement {
 
   attributeChangedCallback(name: string): void {
     if (name === 'volume') {
-      this.shadowRoot.innerHTML = this.build();
+      this.reload();
     }
   }
 
   reload(): void {
     this.shadowRoot.innerHTML = this.build();
-    this.shadowRoot.querySelector('#volumeSlider').addEventListener('change', () => {
-      this.dispatchEvent(
-        new CustomEvent('volumechange', {
-          detail: {
-            volume: parseInt((this.querySelector('#volumeSlider') as HTMLInputElement).value),
-          },
-        }),
-      );
+    this.shadowRoot.querySelector('.volume-slider').addEventListener('change', () => {
+      this.onChangeListener();
     });
+    this.shadowRoot.querySelector('.volume-slider').addEventListener('input', () => {
+      this.onChangeListener();
+    });
+  }
+
+  private onChangeListener(): void {
+    const volume = parseFloat((this.shadowRoot.querySelector('.volume-slider') as HTMLInputElement).value);
+    requestAnimationFrame(() => {
+      this.style.setProperty('--_perc', volume.toString());
+    });
+    this.dispatchEvent(
+      new CustomEvent('volumechange', {
+        detail: {
+          volume,
+        },
+      }),
+    );
   }
 
   build(): string {
     return `<style>
+        :host {
+          --_perc: ${this.volume};
+        }
         .volume-slider {
           -webkit-appearance: none;
           ${
@@ -61,9 +77,14 @@ export class VolumeElement extends HTMLElement {
           margin-top: 82px;
           transform-origin: center left;`
           }
+          
+          background: linear-gradient(to right,
+            var(--slider-bg-active, ${this.options.filledColor}) 0%,
+            var(--slider-bg-active, ${this.options.filledColor}) calc(var(--_perc) * 100%),
+            var(--slider-bg, ${this.options.bgColor}) calc(var(--_perc) * 100%),
+            var(--slider-bg, ${this.options.bgColor} 100%));
           height: 3px;
           border-radius: 1px;
-          background: ${this.options.bgColor};
           outline: none;
           opacity: 0.7;
           -webkit-transition: 0.2s;
@@ -93,12 +114,12 @@ export class VolumeElement extends HTMLElement {
         }
       </style>
       <div class="volume-container">
-        <input type="range" min="0" max="100" value="${this.volume}" class="volume-slider" id="volumeSlider" />
+        <input type="range" min="0" max="1" step="0.05" value="${this.volume}" class="volume-slider" />
       </div>`;
   }
 
   get volume(): number {
-    return this.hasAttribute('volume') ? parseInt(this.getAttribute('volume')) : 100;
+    return this.hasAttribute('volume') ? parseFloat(this.getAttribute('volume')) : 1;
   }
   get vertical(): boolean {
     return this.hasAttribute('vertical');

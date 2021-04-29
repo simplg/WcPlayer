@@ -21,11 +21,10 @@ export class SeekElement extends HTMLElement {
   }
 
   attributeChangedCallback(name: string): void {
-    if (name == 'time') {
+    if (name == 'time' || name == 'duration') {
       this.style.setProperty('--_perc', (this.currentTime / this.duration).toString());
-    }
-    if (name == 'duration') {
-      this.reload();
+      (this.shadowRoot.querySelector('.seek-slider') as HTMLInputElement).max = this.duration.toString();
+      (this.shadowRoot.querySelector('.seek-slider') as HTMLInputElement).value = this.currentTime.toString();
     }
   }
 
@@ -64,8 +63,10 @@ export class SeekElement extends HTMLElement {
           height: 3px;
           border-radius: 1px;
           background: linear-gradient(to right,
-            var(--slider-bg-active, rgb(52, 77, 144)) 0%, var(--slider-bg-active, rgb(52, 77, 144)) calc(var(--_perc) * 100%),
-            var(--slider-bg, rgb(230, 230, 230)) calc(var(--_perc) * 100%), var(--slider-bg, rgb(230, 230, 230) 100%));
+            var(--slider-bg-active, ${this.options.filledColor}) 0%,
+            var(--slider-bg-active, ${this.options.filledColor}) calc(var(--_perc) * 100%),
+            var(--slider-bg, ${this.options.bgColor}) calc(var(--_perc) * 100%),
+            var(--slider-bg, ${this.options.bgColor} 100%));
           outline: none;
           opacity: 0.7;
           -webkit-transition: 0.2s;
@@ -98,6 +99,7 @@ export class SeekElement extends HTMLElement {
         <input
           type="range"
           min="0"
+          step="0.25"
           max="${this.duration}"
           value="${this.currentTime}"
           class="seek-slider"

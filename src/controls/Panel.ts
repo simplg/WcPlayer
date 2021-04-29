@@ -68,4 +68,4 @@ export class Panel extends HTMLElement {
   }
 }
 
-customElements.define('panel', Panel);
+customElements.define('wc-panel', Panel);
