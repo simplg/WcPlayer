@@ -30,9 +30,6 @@ export class SeekElement extends HTMLElement {
 
   reload(): void {
     this.shadowRoot.innerHTML = this.build();
-    this.shadowRoot.querySelector('.seek-slider').addEventListener('change', () => {
-      this.onChangeListener();
-    });
     this.shadowRoot.querySelector('.seek-slider').addEventListener('input', () => {
       this.onChangeListener();
     });
@@ -108,12 +105,12 @@ export class SeekElement extends HTMLElement {
   }
 
   get duration(): number {
-    const duration = this.hasAttribute('duration') ? parseInt(this.getAttribute('duration')) : 0;
+    const duration = this.hasAttribute('duration') ? parseFloat(this.getAttribute('duration')) : 0;
     return !isNaN(duration) ? duration : 0;
   }
 
   get currentTime(): number {
-    const currentTime = this.hasAttribute('time') ? parseInt(this.getAttribute('time')) : 0;
+    const currentTime = this.hasAttribute('time') ? parseFloat(this.getAttribute('time')) : 0;
     return !isNaN(currentTime) ? currentTime : 0;
   }
 

@@ -6,9 +6,9 @@ export default class LocalStore implements StoreInterface {
     const item = localStorage.getItem(key);
     switch (key) {
       case 'muted':
-        return (item == '1') as WcProperties[K];
+        return (item === 'true') as WcProperties[K];
       case 'volume':
-        const vol = parseFloat(item) || 1;
+        const vol = item !== null ? parseFloat(item) : 1;
         return vol as WcProperties[K];
     }
   }

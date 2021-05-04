@@ -13,6 +13,7 @@ export interface VolumeOptions {
 
 export class VolumeElement extends HTMLElement {
   _options: VolumeOptions;
+  private shouldEmit = true;
   constructor(opt?: VolumeOptions) {
     super();
     const defaultStyle: VolumeOptions = {
@@ -35,17 +36,20 @@ export class VolumeElement extends HTMLElement {
 
   attributeChangedCallback(name: string): void {
     if (name === 'volume') {
-      this.reload();
+      this.shouldEmit = false;
+      this.style.removeProperty('--_perc');
+      (this.shadowRoot.querySelector('.volume-slider') as HTMLInputElement).value = this.volume.toString();
+      requestAnimationFrame(() => {
+        this.style.setProperty('--_perc', this.volume.toString());
+      });
+      this.shouldEmit = true;
     }
   }
 
   reload(): void {
     this.shadowRoot.innerHTML = this.build();
-    this.shadowRoot.querySelector('.volume-slider').addEventListener('change', () => {
-      this.onChangeListener();
-    });
     this.shadowRoot.querySelector('.volume-slider').addEventListener('input', () => {
-      this.onChangeListener();
+      if (this.shouldEmit) this.onChangeListener();
     });
   }
 

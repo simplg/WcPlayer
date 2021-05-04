@@ -8,6 +8,11 @@ import './controls/FullscreenButton';
 import './controls/PiPButton';
 import './controls/VolumeButton';
 import './controls/Panel';
+import { FxManager, WidthZeroFx } from './FxManager';
+
+export enum ControlFx {
+  HIDE_VOLUME = 'hide_volume',
+}
 
 export interface ControlElements {
   playPauseButton: HTMLElement;
@@ -24,14 +29,15 @@ export interface PanelElements {
   settingsPanel: HTMLElement;
 }
 
-export interface WcControlsProps {
-  elements: ControlElements;
-  panels: PanelElements;
-}
+export type WcControlsOptions = {
+  hideVolume: boolean;
+};
 
 export class WcControls extends HTMLElement {
-  elements: ControlElements;
-  panels: PanelElements;
+  private _elements: ControlElements;
+  private _panels: PanelElements;
+  private fxManager = new FxManager();
+  private defaultOptions: WcControlsOptions = { hideVolume: true };
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -39,6 +45,14 @@ export class WcControls extends HTMLElement {
 
   connectedCallback() {
     this.reload();
+  }
+
+  get elements(): ControlElements {
+    return this._elements;
+  }
+
+  get panels(): PanelElements {
+    return this._panels;
   }
 
   get color(): string {
@@ -50,19 +64,34 @@ export class WcControls extends HTMLElement {
     this.setAttribute('color', color);
   }
 
-  static get observedAttributes(): string[] {
-    return ['color'];
+  get options(): WcControlsOptions {
+    const options = JSON.parse(this.getAttribute('options')) as WcControlsOptions;
+    return Object.assign(this.defaultOptions, options);
   }
 
-  attributeChangedCallback(name: string) {
+  set options(opt: WcControlsOptions) {
+    this.setAttribute('options', JSON.stringify(opt));
+  }
+
+  static get observedAttributes(): string[] {
+    return ['color', 'options'];
+  }
+
+  attributeChangedCallback(name: string): void {
     if (name === 'color') {
-      this.reload();
+      Object.keys(this.elements).forEach((key: keyof ControlElements) => {
+        this.elements[key].setAttribute('color', this.color);
+      });
+    }
+    if (name == 'options') {
+      if (this.options.hideVolume) this.elements.volumeElement.classList.add('hide');
+      else this.elements.volumeElement.classList.remove('hide');
     }
   }
 
   reload(): void {
     this.shadowRoot.innerHTML = this.build();
-    this.elements = {
+    this._elements = {
       playPauseButton: this.shadowRoot.querySelector('play-button'),
       volumeButton: this.shadowRoot.querySelector('volume-button'),
       volumeElement: this.shadowRoot.querySelector('volume-element'),
@@ -72,26 +101,20 @@ export class WcControls extends HTMLElement {
       fullscreenButton: this.shadowRoot.querySelector('fullscreen-button'),
       pipButton: this.shadowRoot.querySelector('pip-button'),
     };
-    this.panels = {
+    this._panels = {
       settingsPanel: this.shadowRoot.querySelector('settings-panel'),
     };
     this.attachEvents();
+    this.setFx();
   }
   attachEvents(): void {
-    this.elements.playPauseButton.addEventListener('click', (e) => {
+    this.elements.playPauseButton.addEventListener('click', () => {
       this.emit('wctoggleplay', {});
     });
-    this.elements.volumeButton.addEventListener('click', (e) => {
+    this.elements.volumeButton.addEventListener('click', () => {
       this.emit('wcmuted', {
         muted: !this.elements.volumeButton.hasAttribute('mute'),
       });
-    });
-    const volumeControl = this.shadowRoot.querySelector('.volume-control') as HTMLDivElement;
-    volumeControl.addEventListener('mouseover', () => {
-      this.elements.volumeElement.classList.remove('hide');
-    });
-    volumeControl.addEventListener('mouseout', () => {
-      this.elements.volumeElement.classList.add('hide');
     });
     this.elements.seekElement.addEventListener('seekchange', (e: CustomEvent<SeekChangeEvent>) => {
       const { time } = e.detail;
@@ -108,15 +131,6 @@ export class WcControls extends HTMLElement {
 
   build(): string {
     return `<style>
-        .controls {
-          position: relative;
-          z-index: 2;
-          height: 45px;
-          width: 100%;
-          top: -45px;
-          background: black;
-          color: ${this.color};
-        }
         .control-list {
           display: flex;
           flex-direction: row;
@@ -150,7 +164,7 @@ export class WcControls extends HTMLElement {
             <play-button class="play-button" color="${this.color}"></play-button>
             <div class="volume-control">
               <volume-button class="volume-button" color="${this.color}"></volume-button>
-              <volume-element class="volume-element" class="hide"></volume-element>
+              <volume-element class="volume-element${this.options.hideVolume ? ' hide' : ''}"></volume-element>
             </div>
             <timer-element class="timer-element"></timer-element>
           </div>
@@ -162,21 +176,33 @@ export class WcControls extends HTMLElement {
         </div>
       </div>
       <wc-panel class="hide"></wc-panel>
-      `;
+    `;
   }
   addEventListener<K extends keyof ControlsEventMap>(
     type: K,
-    listener: (ev: CustomEvent<ControlsEventMap[K]>) => void,
+    listener: (this: WcControls, ev: CustomEvent<ControlsEventMap[K]>) => void,
     options?: boolean | AddEventListenerOptions,
-  ): void {
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(type: any, listener: any, options?: any): void {
     super.addEventListener(type, listener, options);
   }
 
   removeEventListener<K extends keyof ControlsEventMap>(
     type: K,
-    listener: (ev: CustomEvent<ControlsEventMap[K]>) => void,
+    listener: (this: WcControls, ev: CustomEvent<ControlsEventMap[K]>) => void,
     options?: boolean | EventListenerOptions,
-  ): void {
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(type: any, listener: any, options?: any): void {
     super.removeEventListener(type, listener, options);
   }
 
@@ -184,6 +210,17 @@ export class WcControls extends HTMLElement {
     super.dispatchEvent(
       new CustomEvent<ControlsEventMap[K]>(type, { detail: ev }),
     );
+  }
+
+  setFx(): void {
+    const { hideVolume } = this.options;
+    if (this.fxManager.has(ControlFx.HIDE_VOLUME)) this.fxManager.remove(ControlFx.HIDE_VOLUME);
+    if (hideVolume) {
+      this.fxManager.add(
+        ControlFx.HIDE_VOLUME,
+        new WidthZeroFx(this.elements.volumeElement, this.shadowRoot.querySelector('.volume-control')),
+      );
+    }
   }
 }
 
